@@ -457,6 +457,20 @@ async function handleV2ConsolidateUnspents(req: express.Request) {
  * handle wallet fanout unspents
  * @param req
  */
+async function handleV2ConsolidateAccount(req: express.Request) {
+  const bitgo = req.bitgo;
+  const coin = bitgo.coin(req.params.coin);
+  if (coin.getFamily() !== 'hbar') {
+    throw new Error('invalid coin selected');
+  }
+  const wallet = await coin.wallets().get({ id: req.params.id });
+  return wallet.sendAccountConsolidations(req.body);
+}
+
+/**
+ * handle wallet fanout unspents
+ * @param req
+ */
 async function handleV2FanOutUnspents(req: express.Request) {
   const bitgo = req.bitgo;
   const coin = bitgo.coin(req.params.coin);
@@ -852,6 +866,14 @@ export function setupRoutes(app: express.Application, config: Config) {
     parseBody,
     prepareBitGo(config),
     promiseWrapper(handleV2AccelerateTransaction)
+  );
+
+  // account-based
+  app.post(
+    '/api/v2/:coin/wallet/:id/consolidateAccount',
+    parseBody,
+    prepareBitGo(config),
+    promiseWrapper(handleV2ConsolidateAccount)
   );
 
   // Miscellaneous
