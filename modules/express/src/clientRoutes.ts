@@ -15,6 +15,7 @@ import { RequestTracer } from 'bitgo/dist/src/v2/internal/util';
 
 import { Config } from './config';
 import { ApiResponseError } from './errors';
+import { CoinFamily } from '@bitgo/statics';
 
 const { version } = require('bitgo/package.json');
 const pjson = require('../package.json');
@@ -454,17 +455,50 @@ async function handleV2ConsolidateUnspents(req: express.Request) {
 }
 
 /**
- * handle wallet fanout unspents
+ * Handle Wallet Account Consolidation.
+ *
  * @param req
  */
 async function handleV2ConsolidateAccount(req: express.Request) {
   const bitgo = req.bitgo;
   const coin = bitgo.coin(req.params.coin);
-  if (coin.getFamily() !== 'hbar') {
+
+  if (req.body.consolidateAddresses && !_.isArray(req.body.consolidateAddresses)) {
+    throw new Error('consolidate address must be an array of addresses');
+  }
+
+  if (coin.getFamily() !== CoinFamily.HBAR) {
     throw new Error('invalid coin selected');
   }
+
   const wallet = await coin.wallets().get({ id: req.params.id });
-  return wallet.sendAccountConsolidations(req.body);
+
+  let result: any;
+  try {
+    result = wallet.sendAccountConsolidations(req.body);
+  } catch (err) {
+    err.status = 400;
+    throw err;
+  }
+
+  // we had failures to handle
+  if (result.failure.length && result.failure.length > 0) {
+    let msg = '';
+    let status = 202;
+
+    if (result.success.length && result.success.length > 0) {
+      // but we also had successes
+      msg = `Transactions failed: ${result.failure.length} and succeeded: ${result.success.length}`;
+    } else {
+      // or in this case only failures
+      status = 400;
+      msg = `All transactions failed`;
+    }
+
+    throw apiResponse(status, result, msg);
+  }
+
+  return result;
 }
 
 /**
