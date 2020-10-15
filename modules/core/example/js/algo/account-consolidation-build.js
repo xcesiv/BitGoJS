@@ -66,7 +66,7 @@ Promise.coroutine(function *() {
 
   // this will take all money off receive addresses in the wallet
   // you can also specify which receive address by passing consolidateAddresses here:
-  // e.g. { walletPassphrase, ΩΩΩ: ['onchainReceiveAddress'] }
+  // e.g. { walletPassphrase, consolidateAddresses: ['onchainReceiveAddress'] }
 
   try {
     // this is one example of how you might send only the first consolidation from this group
